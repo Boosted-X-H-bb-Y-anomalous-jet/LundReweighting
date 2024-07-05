@@ -137,6 +137,7 @@ class Dataset():
         self.norm_unc = 0.0
         self.dtype = dtype
         self.gen = gen
+        self.Y_vae_loss = f['Y_vae_loss']
 
 
     def n(self):
