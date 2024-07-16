@@ -41,7 +41,7 @@ def calc_SF(fname,f_ratio_name):
     d = Dataset(f_sig, dtype = 1)
     d.compute_obs()
 
-    #The cut we will compute a SF for 'Y_vae_loss > 0.05'
+    #The cut we will compute a SF for 'Y_vae_loss > 0.00005'
     tag_obs = 'Y_vae_loss'
     score_thresh = 0.00005
 
@@ -198,6 +198,7 @@ def calc_SF(fname,f_ratio_name):
 
     print(eff_str)
     f_ratio.Close()
+    return eff_nom,eff_rw,tot_unc_up,tot_unc_down
 
 
 
@@ -209,15 +210,14 @@ def xrdcp_merged_file(year,process):
 
 
 year = "2018"
-process = "MX1600_MY90"#I'm pretty sure ttbar gen_info is messed up!
+process = "MX1600_MY90"
 xrdcp_merged_file(year,process)
-# eff_nom, sf, sf_stat_unc, sf_pt_unc, sf_sys_unc_up, sf_sys_unc_down = calc_SF("merged.h5",f'../data/ratio_{year}.root')
-# sf_string = f"{process} {year} {eff_nom:.3f} {sf:.3f} {sf_stat_unc:.3f} {sf_pt_unc:.3f} {sf_sys_unc_up:.3f} {sf_sys_unc_down:.3f}"
-# current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-# line_to_write = f"{sf_string} - {current_date}\n"
+eff_nom,eff_rw,tot_unc_up,tot_unc_down = calc_SF("merged.h5","data/ratio_2018.root")
+sf_string = "..."
+current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+line_to_write = f"{sf_string} - {current_date}\n"
 
-# with open("SFs.txt", "a") as file:
-#     file.write(line_to_write)
-# subprocess.call("rm merged.h5",shell=True)
+with open("SFs.txt", "a") as file:
+    file.write(line_to_write)
+subprocess.call("rm merged.h5",shell=True)
 
-calc_SF("merged.h5","data/ratio_2018.root")
