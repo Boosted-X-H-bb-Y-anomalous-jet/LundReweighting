@@ -3,13 +3,12 @@ sys.path.insert(0, '')
 sys.path.append("../")
 from utils.Utils import *
 
-
-
 parser = input_options()
 options = parser.parse_args()
-tdrstyle.setTDRStyle()
 
 print(options)
+
+ROOT.TGaxis.SetMaxDigits(3);
 
 #UL
 if(options.year == 2018):
@@ -58,6 +57,7 @@ norm = True
 jms_corr = 1.0
 
 #m_cut_min = 125.
+#m_cut_min = 150.
 m_cut_min = 150.
 m_cut_max = 225.
 pt_cut = 500.
@@ -101,7 +101,7 @@ jet_kinematics_data= d_data.get_masked('jet_kinematics')
 msd_cut_data = (jet_kinematics_data[:,3] > m_cut_min) & (jet_kinematics_data[:,3] < m_cut_max)
 pt_cut_data = jet_kinematics_data[:,0] > pt_cut
 d_data.compute_kinematics()
-mu_b_dr_cut = d_data.dR_mu_bjet > 0.1
+mu_b_dr_cut = d_data.dR_mu_bjet > dR_mu_bjet_cut
 d_data.apply_cut(msd_cut_data & pt_cut_data & mu_b_dr_cut)
 d_data.compute_obs()
 
@@ -113,7 +113,7 @@ for d in (bkgs + sigs):
     jet_kinematics = d.get_masked('jet_kinematics')
     msd_cut_mask = (jet_kinematics[:,3] * jms_corr > m_cut_min) & (jet_kinematics[:,3] * jms_corr < m_cut_max)
     pt_cut_mask = jet_kinematics[:,0] > pt_cut
-    mu_b_dr_cut = d.dR_mu_bjet > 0.1
+    mu_b_dr_cut = d.dR_mu_bjet > dR_mu_bjet_cut
     d.apply_cut(msd_cut_mask & pt_cut_mask & mu_b_dr_cut)
     d.compute_obs()
 
@@ -150,7 +150,7 @@ obs = ["tau21", "tau32", "tau43", "nPF", "mSoftDrop", "pt"]
 
 
 obs_attrs = {
-        'mSoftDrop' : (125, 225, 25, "m_{SD} [GeV]", "Events / 4 GeV"),
+        'mSoftDrop' : (150, 225, 25, "m_{SD} [GeV]", "Events / 3 GeV"),
         'tau21' : (0.05, 0.8, 15, "#tau_{21}", "Events / 0.05" ),
         'tau32' : (0.2, 0.95, 15, "#tau_{32}", "Events / 0.05"),
         'tau43' : (0.6, 0.96, 18, "#tau_{43}", "Events / 0.02"),

@@ -7,19 +7,21 @@ from utils.Utils import *
 parser = input_options()
 parser.add_argument("--topSF", default=False, action='store_true',  help="Top SF")
 parser.add_argument("--LPorder", default=1, type=int,  help="LP max order")
+parser.add_argument("--reco", default=False, action='store_true',  help="Reco level")
 options = parser.parse_args()
 
 print(options)
 
 #UL
 lumi = 59.74
-f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/Lund_output_files_gen/"
-
-no_bkg = True
-
-f_pythia = h5py.File(f_dir + "TT_pythia.h5", "r")
-f_herwig = h5py.File(f_dir + "TT_herwig.h5", "r")
-
+if(not options.reco):
+    f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/Lund_output_files_herwig/"
+    f_pythia = h5py.File(f_dir + "TT_pythia.h5", "r")
+    f_herwig = h5py.File(f_dir + "TT_herwig.h5", "r")
+else:
+    f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/"
+    f_herwig = h5py.File(f_dir + "Lund_output_files_herwig/TT_herwig_reco.h5", "r")
+    f_pythia = h5py.File(f_dir + "Lund_output_files_2018/TT.h5", "r")
 
 f_ratio_name = ""
 if(options.fin != ""): f_ratio_name = options.fin
@@ -37,11 +39,11 @@ tau32_thresholds = [0.3, 0.4, 0.5]
 
 if(not os.path.exists(outdir)): os.system("mkdir " + outdir)
 
-d_pythia_w_match = Dataset(f_pythia, label = "pythia : W-matched", color = ROOT.kRed, is_data = True)
-d_pythia_t_match = Dataset(f_pythia, label = "pythia : t-matched ", color = ROOT.kOrange-3, is_data = True)
+d_pythia_w_match = Dataset(f_pythia, label = "pythia : W-matched", color = ROOT.kRed, is_data = True, gen = not options.reco)
+d_pythia_t_match = Dataset(f_pythia, label = "pythia : t-matched ", color = ROOT.kOrange-3, is_data = True, gen = not options.reco)
 
-d_herwig_w_match = Dataset(f_herwig, label = "herwig : W-matched", color = ROOT.kRed, is_data = True)
-d_herwig_t_match = Dataset(f_herwig, label = "herwig : t-matched ", color = ROOT.kOrange-3, is_data = True)
+d_herwig_w_match = Dataset(f_herwig, label = "herwig : W-matched", color = ROOT.kRed, is_data = True, gen = not options.reco)
+d_herwig_t_match = Dataset(f_herwig, label = "herwig : t-matched ", color = ROOT.kOrange-3, is_data = True, gen = not options.reco)
 
 
 pythia_gen_matching = d_pythia_w_match.f['gen_parts'][:,0]
@@ -63,22 +65,29 @@ d_herwig_t_match.apply_cut(herwig_t_match_cut)
 if(options.topSF):
     d_pythia, d_herwig = d_pythia_t_match, d_herwig_t_match
     thresholds = tau32_thresholds
-    title="Top-matched"
+    title="Top-matched (3 pronged)"
     obs = 'tau32'
     pt_cut = 500.
+    m_cut_min = 150.
+    m_cut_max = 225.
 else:
     d_pythia, d_herwig = d_pythia_w_match, d_herwig_w_match
     thresholds = tau21_thresholds
-    title="W-matched"
+    title="W-matched (2 pronged)"
     obs = 'tau21'
     pt_cut = 225.
+    m_cut_min = 70.
+    m_cut_max = 110.
+    #m_cut_min = 80.
+    #m_cut_max = 81.
 
 
 
 for d in [d_pythia, d_herwig]:
-    jet_kinematics = d.f['jet_kinematics'][:]
+    jet_kinematics = d.get_masked('jet_kinematics')
     pt_cut_mask = jet_kinematics[:,0] > pt_cut
-    d.apply_cut(pt_cut_mask)
+    msd_cut_mask = (jet_kinematics[:,3] > m_cut_min) & (jet_kinematics[:,3] < m_cut_max)
+    d.apply_cut(pt_cut_mask & msd_cut_mask)
     d.compute_obs()
     d.nom_weights = d.get_weights()
 
@@ -88,7 +97,8 @@ print("%i pythia, %i herwig evts" % (len(d_pythia.nom_weights), len(d_herwig.nom
 LP_rw = LundReweighter(jetR = jetR, f_ratio = f_ratio, charge_only = options.charge_only, LP_order = options.LPorder)
 
 #don't do distortion sys for W's
-LP_weights = d_pythia.reweight_all(LP_rw, do_sys_weights = do_sys_variations, distortion_sys = options.topSF)
+#LP_weights = d_pythia.reweight_all(LP_rw, do_sys_weights = do_sys_variations, distortion_sys = options.topSF)
+LP_weights = d_pythia.reweight_all(LP_rw, do_sys_weights = do_sys_variations)
 
 for key in LP_weights.keys():
     if('nom' in key or 'up' in key or 'down' in key):
@@ -125,6 +135,7 @@ print("%i pythia evts, %i Herwig" % (len(getattr(d_pythia, obs)), len(getattr(d_
 f_effs = open(options.outdir + "Effs.txt", "w")
 
 for idx in range(len(pythia_cuts)):
+    print("Thresh %.2f" % thresholds[idx])
 
     pow_cut = pythia_cuts[idx]
     her_cut = herwig_cuts[idx]
@@ -162,7 +173,8 @@ for idx in range(len(pythia_cuts)):
 
     #Add systematic differences in quadrature
     sys_keys = ['sys', 'bquark', 'prongs', 'unclust']
-    if(options.topSF): sys_keys.append('distortion')
+    #if(options.topSF): sys_keys.append('distortion')
+    sys_keys.append('distortion')
     sys_uncs = dict()
 
     diffs_up = np.abs(LP_weights['nom'] - LP_weights['prongs_up'])
@@ -217,7 +229,7 @@ f_effs.close()
 f_ratio.Close()
 
 #Plotting
-tau21_start = 0.2 if options.topSF else 0.05
+tau21_start = 0.2 if options.topSF else 0.1
 tau32_start = 0.15 if options.topSF else 0.3
 tau43_start = 0.4 if options.topSF else 0.6
 obs_attrs = {
@@ -228,6 +240,13 @@ obs_attrs = {
         'nPF' : (0.5, 100.5, 50, "Num. PF Cands.", "Events " ),
         'pt' : (pt_cut, 825., 20, r"$p_{T}$", "Events "),
         }
+if(options.reco):
+    obs_attrs['ParticleNet_W'] = (0., 1., 15, r"ParticleNet W Tag Score", "Events ")
+    obs_attrs['ParticleNet_H4q'] = (0., 1., 15, r"ParticleNet H4q Tag Score", "Events ")
+    obs_attrs['DeepAK8_W'] = (0., 1., 15, r"DeepAK8 W Tag Score", "Events ")
+    obs_attrs['DeepAK8_W_MD'] = (0., 1., 15, r"DeepAK8 W MD Tag Score", "Events ")
+    obs_attrs['DeepAK8_H4q'] = (0., 1., 15, r"DeepAK8 H4q Tag Score", "Events ")
+
 labels = ['herwig', 'pythia', 'pythia, reweighted']
 colors = [c_red, c_lightblue, c_purple]
 
@@ -246,6 +265,6 @@ for l in obs_attrs.keys():
     obs = [getattr(d_herwig, l), getattr(d_pythia, l), getattr(d_pythia, l)]
 
     make_herwig_ratio_histogram(obs, weights = hist_weights, sys_weights = hist_sys_weights, first_like_data = True, 
-            labels = labels, colors = colors, axis_label = label, num_bins = nbins_, h_range = (low, high),
+            labels = labels, colors = colors, axis_label = label, num_bins = nbins_, h_range = (low, high), leg_loc = 'upper left',
             normalize = True, ratio_range = (0.5, 1.5), title = title, fname = outdir +title + '_' + l + "_cmp.png" )
 

@@ -15,27 +15,27 @@ print(options)
 outdir = options.outdir
 if(not os.path.exists(outdir)): os.system("mkdir %s" % outdir)
 
-fname = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/TagNTrain/data/LundRW/WkkToWRadionToWWW_M3000_Mr400_TuneCP5_13TeV-madgraph-pythia8_TIMBER_Lund.h5"
-#fname = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/TagNTrain/data/LundRW/YtoHH_Htott_Y3000_H400_TuneCP5_13TeV-madgraph-pythia8_TIMBER_Lund.h5"
-#fname = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/TagNTrain/data/LundRW/ZpToTpTp_Zp5000_Tp400_TuneCP5_13TeV-madgraph-pythia8_TIMBER_Lund.h5"
-#fname = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/TagNTrain/data/LundRW/XToYYprimeTo4Q_MX3000_MY170_MYprime170_narrow_TuneCP5_13TeV-madgraph-pythia8_TIMBER_Lund.h5"
+#fname = "/eos/uscms/store/user/oamram/case/sig_files/WkkToWRadionToWWW_M3000_Mr400_TuneCP5_13TeV-madgraph-pythia8_TIMBER.h5"
+#fname = "/eos/uscms/store/user/oamram/case/sig_files/YtoHH_Htott_Y3000_H400_TuneCP5_13TeV-madgraph-pythia8_TIMBER.h5"
+#fname = "/eos/uscms/store/user/oamram/case/sig_files/ZpToTpTp_Zp5000_Tp400_TuneCP5_13TeV-madgraph-pythia8_TIMBER.h5"
+fname = "/eos/uscms/store/user/oamram/case/sig_files/XToYYprimeTo4Q_MX3000_MY170_MYprime170_narrow_TuneCP5_13TeV-madgraph-pythia8_TIMBER.h5"
 #fname = "test_signal_CASE.h5"
 
 
 
 #label = "YtoHH"
 #h_label = label
-label = "Wkk"
-h_label = label
+#label = "Wkk"
+#h_label = label
 #label = "ZpToTpTp"
 #h_label = 'Zp'
-#label = "XtoYY"
-#h_label = 'XYY'
+label = "XtoYY"
+h_label = 'XYY'
 
-tag_obs = 'tau43'
-score_thresh = 0.65
-#tag_obs = 'tau21'
-#score_thresh = 0.34
+#tag_obs = 'tau43'
+#score_thresh = 0.65
+tag_obs = 'tau21'
+score_thresh = 0.34
 
 
 f_ratio = ROOT.TFile.Open(options.fin)
@@ -45,8 +45,8 @@ j_idx = 0
 jetR = 1.0
 num_excjets = -1
 
-#max_evts = 20000
-max_evts = 1000
+max_evts = 20000
+#max_evts = 1000
 #max_evts = None
 
 d = Dataset(f_sig, label = label, color = ROOT.kRed, dtype = 1)
@@ -211,7 +211,7 @@ make_histogram([LP_weights['subjet_pts']], ["Subjets"], colors = ['blue'], xaxis
                 title = "%s : subjet pt " % (label), num_bins = 40, normalize = True, fname = options.outdir + label + "_subjet_pt.png")
 
 print(np.amin(LP_weights['subjet_pts']))
-print("Fraction of subjets with pt > 350 : %.3f" % (np.mean( LP_weights['subjet_pts'] > 350.)))
+print("Fraction of subjets with pt > 350 : %.3f" % (np.mean( np.array(LP_weights['subjet_pts']) > 350.)))
 
 
 

@@ -10,14 +10,24 @@ options = parser.parse_args()
 print(options)
 
 #UL
-#lumi = 59.74
-#f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/Lund_output_files_2018/"
 
-#lumi = 41.42
-#f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/Lund_output_files_2017/"
+if(options.year == 2018):
+    lumi = 59.74
+    year = 2018
+    f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/Lund_output_files_2018/"
+    f_ratio_name = "data/ratio_2018.root"
 
-lumi = 16.8 + 19.5
-f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/Lund_output_files_2016/"
+elif(options.year == 2017):
+    lumi = 41.42
+    year = 2017
+    f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/Lund_output_files_2017/"
+
+elif(options.year == 2016):
+    year = 2016
+    lumi = 16.8 + 19.5
+    f_dir = "/uscms_data/d3/oamram/CASE_analysis/src/CASE/LundReweighting/Lund_output_files_2016/"
+else:
+    exit(1)
 
 f_data = h5py.File(f_dir + "SingleMu_merge.h5", "r")
 f_ttbar = h5py.File(f_dir + "TT.h5", "r")
@@ -34,13 +44,12 @@ charge_only = False
 
 
 do_sys_variations = not options.no_sys
-do_plot = False
+do_plot = True
 
 norm = True
 
-jms_corr = 1.0
 
-m_cut_min = 60.
+m_cut_min = 70.
 m_cut_max = 110.
 #m_cut_min = 80.
 #m_cut_max = 81.
@@ -53,25 +62,27 @@ if(not os.path.exists(outdir)): os.system("mkdir " + outdir)
 
 d_data = Dataset(f_data, is_data = True)
 
-d_tw = Dataset(f_tw, label = "tW", color = ROOT.kMagenta, jms_corr = jms_corr)
-d_wjets = Dataset(f_wjets, label = "W+Jets + QCD", color = ROOT.kGray, jms_corr = jms_corr)
-d_diboson = Dataset(f_diboson, label = "Diboson", color = ROOT.kCyan, jms_corr = jms_corr)
-d_singletop = Dataset(f_singletop, label = "Single Top", color = ROOT.kMagenta+4, jms_corr = jms_corr)
+d_wjets = Dataset(f_wjets, label = "W+Jets + QCD", color = ROOT.kGray, )
+d_diboson = Dataset(f_diboson, label = "Diboson", color = ROOT.kCyan, )
+d_singletop = Dataset(f_singletop, label = "Single Top", color = ROOT.kMagenta+4, )
 
+d_tw_w_match = Dataset(f_tw, label = "tW : W-matched", color = ROOT.kMagenta, )
+d_tw_nomatch = Dataset(f_tw, label = "tW : unmatched", color = ROOT.kMagenta+3, )
 
-d_ttbar_w_match = Dataset(f_ttbar, label = "ttbar : W-matched", color = ROOT.kRed, jms_corr =jms_corr)
-d_ttbar_t_match = Dataset(f_ttbar, label = "ttbar : t-matched ", color = ROOT.kOrange-3, jms_corr = jms_corr)
-d_ttbar_nomatch = Dataset(f_ttbar, label = "ttbar : unmatched", color = ROOT.kGreen+3, jms_corr = jms_corr)
+d_ttbar_w_match = Dataset(f_ttbar, label = "ttbar : W-matched", color = ROOT.kRed )
+d_ttbar_t_match = Dataset(f_ttbar, label = "ttbar : t-matched ", color = ROOT.kOrange-3, )
+d_ttbar_nomatch = Dataset(f_ttbar, label = "ttbar : unmatched", color = ROOT.kGreen+3, )
 
-#TODO 
 d_wjets.norm_unc = 0.1
 d_diboson.norm_unc = 0.04
 d_singletop.norm_unc = 0.05
-d_tw.norm_unc = 0.05
+d_tw_nomatch.norm_unc = 0.05
+d_tw_w_match.norm_unc = 0.05
 
 d_ttbar_nomatch.norm_unc = 0.06
 
 ttbar_gen_matching = d_ttbar_w_match.f['gen_parts'][:,0]
+tW_gen_matching = d_tw_w_match.f['gen_parts'][:,0]
 
 #0 is unmatched, 1 is W matched, 2 is top matched
 nomatch_cut = ttbar_gen_matching < 0.1
@@ -83,8 +94,13 @@ d_ttbar_t_match.apply_cut(t_match_cut)
 d_ttbar_nomatch.apply_cut(nomatch_cut)
 
 
-sigs = [d_ttbar_w_match]
-bkgs = [d_ttbar_nomatch, d_ttbar_t_match, d_tw, d_diboson, d_wjets, d_singletop]
+tW_w_match_cut = (tW_gen_matching  > 0.9) &  (tW_gen_matching < 1.1)
+d_tw_w_match.apply_cut(tW_w_match_cut)
+d_tw_nomatch.apply_cut(~tW_w_match_cut)
+
+
+sigs = [d_ttbar_w_match, d_tw_w_match]
+bkgs = [d_ttbar_nomatch, d_ttbar_t_match, d_tw_nomatch, d_diboson, d_wjets, d_singletop]
 
 
 ratio_range = [0.5, 1.5]
@@ -108,19 +124,20 @@ h_data.GetYaxis().SetTitle(y_label)
 bkg_sys_variations = dict()
 sig_sys_variations = dict()
 if(do_sys_variations):
-    keys = sys_weights_map.keys()
+    keys = list(sys_weights_map.keys())
     keys.remove("nom_weight")
     for sys in keys: 
         bkg_sys_variations[sys] = (h_bkg.Clone(h_bkg.GetName().replace("nom",sys)), h_bkg_subjets.Clone(h_bkg_subjets.GetName().replace("nom",sys)))
         if(sys in sig_sys): sig_sys_variations[sys] = (h_mc.Clone(h_mc.GetName().replace("nom",sys)), h_mc_subjets.Clone(h_mc_subjets.GetName().replace("nom",sys)))
 
 
+#Apply cuts
 
 jet_kinematics_data = d_data.get_masked('jet_kinematics')
 d_data.compute_kinematics()
 msd_cut_data = (jet_kinematics_data[:,3] > m_cut_min) & (jet_kinematics_data[:,3] < m_cut_max)
 pt_cut_data = jet_kinematics_data[:,0] > pt_cut
-mu_b_dr_cut = d_data.dR_mu_bjet > 0.1
+mu_b_dr_cut = d_data.dR_mu_bjet > dR_mu_bjet_cut
 d_data.apply_cut(msd_cut_data & pt_cut_data & mu_b_dr_cut)
 d_data.compute_obs()
 
@@ -130,9 +147,9 @@ for d in (bkgs + sigs):
 
     d.compute_kinematics()
     jet_kinematics = d.get_masked('jet_kinematics')
-    msd_cut_mask = (jet_kinematics[:,3] * jms_corr > m_cut_min) & (jet_kinematics[:,3] * jms_corr < m_cut_max)
+    msd_cut_mask = (jet_kinematics[:,3]  > m_cut_min) & (jet_kinematics[:,3] < m_cut_max)
     pt_cut_mask = jet_kinematics[:,0] > pt_cut
-    mu_b_dr_cut = d.dR_mu_bjet > 0.1
+    mu_b_dr_cut = d.dR_mu_bjet > dR_mu_bjet_cut 
     d.apply_cut(msd_cut_mask & pt_cut_mask & mu_b_dr_cut)
     d.compute_obs()
 
@@ -146,13 +163,17 @@ num_ttbar_nomatch = np.sum(d_ttbar_nomatch.get_weights())
 num_ttbar_w_match = np.sum(d_ttbar_w_match.get_weights())
 num_ttbar_t_match = np.sum(d_ttbar_t_match.get_weights())
 num_ttbar_tot = num_ttbar_nomatch + num_ttbar_w_match + num_ttbar_t_match
-num_tw = np.sum(d_tw.get_weights())
+num_tw_nomatch = np.sum(d_tw_nomatch.get_weights())
+num_tw_w_match = np.sum(d_tw_w_match.get_weights())
+num_tw = num_tw_nomatch + num_tw_w_match
 
 tot_bkg = 0.
-for d in (d_diboson, d_wjets, d_singletop):
+for d in [d_diboson, d_wjets, d_singletop]:
     tot_bkg += np.sum(d.get_weights())
-print("%i data, %.0f ttbar (%.0f unmatched, %.0f W matched, %.0f t matched), %.0f tW %.0f bkg" % ( num_data, num_ttbar_tot,num_ttbar_nomatch, 
-                                                                                          num_ttbar_w_match, num_ttbar_t_match, num_tw, tot_bkg))
+
+print("%i data, %.0f ttbar (%.0f unmatched, %.0f W matched, %.0f t matched), %.0f tW (%0.f unmatched %.0f W matched) %.0f bkg" % ( num_data, 
+            num_ttbar_tot,num_ttbar_nomatch, num_ttbar_w_match, num_ttbar_t_match, 
+            num_tw, num_tw_nomatch, num_tw_w_match, tot_bkg))
 normalization = num_data  / (num_ttbar_tot + num_tw + tot_bkg)
 print("normalization", normalization)
 
@@ -162,7 +183,7 @@ if(norm):
 
 
 
-obs = ["tau21", "tau32", "tau43", "nPF", "mSoftDrop", "pt", "DeepAK8_W_MD"]
+obs = ["tau21", "tau32", "tau43", "nPF", "mSoftDrop", "pt", "DeepAK8_W", "DeepAK8_W_MD", "ParticleNet_W"]
 
 colors = []
 weights_nom = []
@@ -196,7 +217,7 @@ if(do_plot):
 
 
 
-LP_rw = LundReweighter(jetR = jetR, charge_only = options.charge_only)
+LP_rw = LundReweighter(charge_only = options.charge_only)
 
 d_data.subjets = d_data.fill_LP(LP_rw, h_data,  h_subjets = h_data_subjets, num_excjets = num_excjets,  rescale_subjets = "vec" )
 
@@ -224,7 +245,7 @@ h_bkg.Write()
 h_data.Write()
 
 if(do_sys_variations):
-    keys = sys_weights_map.keys()
+    keys = list(sys_weights_map.keys())
     keys.remove("nom_weight")
     for i,sys_name in enumerate(keys):
         print(sys_name)
