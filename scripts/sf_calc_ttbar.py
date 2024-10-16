@@ -49,8 +49,7 @@ def calc_SF(fname,f_ratio_name):
     LP_rw = LundReweighter(f_ratio = f_ratio)
 
 
-    #max_evts = 10000
-    max_evts = 30000 #Uncomment for real measurement
+    max_evts = 100000
     if d.f['event_info'].shape[0]<max_evts:
         max_evts = d.f['event_info'].shape[0]
     score = getattr(d, tag_obs)[:max_evts]
@@ -217,7 +216,7 @@ def xrdcp_merged_file(year,process):
 
 
 years = ["2016APV","2016","2017","2018"]
-processes = ["MX1400_MY90", "MX1400_MY125", "MX1400_MY190", "MX1400_MY250", "MX1400_MY300", "MX1400_MY400", "MX1600_MY90", "MX1600_MY125", "MX1600_MY190", "MX1600_MY250", "MX1600_MY300", "MX1600_MY400", "MX1800_MY90", "MX1800_MY125", "MX1800_MY190", "MX1800_MY250", "MX1800_MY300", "MX1800_MY400", "MX2200_MY90", "MX2200_MY125", "MX2200_MY190", "MX2200_MY250", "MX2200_MY300", "MX2200_MY400", "MX2600_MY90", "MX2600_MY125", "MX2600_MY190", "MX2600_MY250", "MX2600_MY300", "MX2600_MY400", "MX3000_MY90", "MX3000_MY125", "MX3000_MY190", "MX3000_MY250", "MX3000_MY300", "MX3000_MY400"]  
+processes = ["TTToHadronic","TTToSemiLeptonic"]  
 for year in years:
     for process in processes:
         xrdcp_merged_file(year,process)
@@ -228,9 +227,7 @@ for year in years:
         sf_string = f"{year},{process},{sf_nom:.3f},{sf_unc_up:.3f},{sf_unc_down:.3f},{eff_nom:.3f},{eff_rw:.3f},{tot_unc_up:.3f},{tot_unc_down:.3f}"
         current_date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         line_to_write = f"{sf_string} - {current_date}\n"
-
-        exit()
-        with open("SFs.txt", "a") as file:
+        with open("SFs_ttbar.txt", "a") as file:
             file.write(line_to_write)
         subprocess.call("rm merged.h5",shell=True)
 
